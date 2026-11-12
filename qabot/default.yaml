@@ -1,0 +1,135 @@
+# QA Bot default configuration.
+# Every number here is a tunable default from the design spec, not an industry
+# standard. Override any part with:  qabot scan URL --config my.yaml
+
+# ---------------------------------------------------------------- weights ---
+# Category weights per site profile. Each profile must sum to 100.
+profiles:
+  general:        {functional: 25, security: 20, performance: 15, reliability: 15, accessibility: 10, maintainability: 10, compatibility: 5}
+  transactional:  {functional: 25, security: 25, performance: 15, reliability: 15, accessibility: 5,  maintainability: 10, compatibility: 5}
+  content:        {functional: 20, security: 10, performance: 25, reliability: 10, accessibility: 20, maintainability: 5,  compatibility: 10}
+
+# Checks inside each category and their share of the category score (sum 100).
+# "needs" is shown in the report when a check could not run.
+categories:
+  functional:
+    name: Functional correctness
+    checks:
+      flows:           {name: Critical user flows,                    share: 40, needs: "Phase 2: needs flow scripts and a test login"}
+      api_contract:    {name: API contract,                           share: 25, needs: "Phase 3: needs an OpenAPI spec"}
+      forms:           {name: Form and input validation,              share: 20, needs: "Phase 2: write tests need a test account"}
+      links_resources: {name: "Links, resources and console errors",  share: 15}
+  security:
+    name: Security
+    checks:
+      dynamic_scan:         {name: Dynamic scan findings,                         share: 40}
+      auth_session:         {name: "Authentication, session and access control",  share: 25, needs: "No cookies were set, so there was no session to assess"}
+      dependencies_secrets: {name: Dependencies and secrets,                      share: 20, needs: "Phase 4: needs the source repository"}
+      tls_headers:          {name: TLS and security headers,                      share: 15}
+  performance:
+    name: Performance and load
+    checks:
+      page_speed:   {name: Page speed,        share: 35}
+      load:         {name: Load test,         share: 30, needs: "Phase 3: needs ownership verification"}
+      stress_spike: {name: Stress and spike,  share: 25, needs: "Phase 3: needs ownership verification"}
+      soak:         {name: Soak test,         share: 10, needs: "Phase 3: needs ownership verification"}
+  reliability:
+    name: Reliability and backend health
+    checks:
+      error_rate:     {name: Error rate in normal use,  share: 35}
+      error_handling: {name: Error handling,            share: 25}
+      recovery:       {name: Recovery after stress,     share: 20, needs: "Phase 3: runs after the stress test"}
+      data_integrity: {name: Data integrity,            share: 20, needs: "Phase 3: needs API write access"}
+  accessibility:
+    name: Accessibility and usability
+    checks:
+      wcag_scan:      {name: Automated WCAG scan,              share: 60}
+      keyboard:       {name: Keyboard navigation,              share: 20, needs: "Needs a browser (Playwright)"}
+      best_practices: {name: Lighthouse best-practice checks,  share: 20, needs: "Lighthouse is not integrated yet"}
+  maintainability:
+    name: Code quality
+    checks:
+      static_analysis: {name: Static analysis,             share: 30, needs: "Phase 4: needs the source repository"}
+      coverage:        {name: Test coverage,               share: 30, needs: "Phase 4: needs the source repository"}
+      unit_tests:      {name: Unit test pass rate,         share: 25, needs: "Phase 4: needs the source repository"}
+      complexity:      {name: Complexity and duplication,  share: 15, needs: "Phase 4: needs the source repository"}
+  compatibility:
+    name: Browser and device compatibility
+    checks:
+      cross_browser: {name: Cross-browser pass rate,  share: 60, needs: "Needs at least two browser engines (playwright install firefox webkit)"}
+      viewports:     {name: Viewport pass rate,       share: 40, needs: "Needs a browser (Playwright)"}
+
+# ---------------------------------------------------------------- scoring ---
+# Findings-type checks start at 100 and lose points per distinct issue.
+deductions: {critical: 40, high: 20, medium: 8, low: 2, info: 0}
+
+# Gates cap the overall score, whatever the weighted average says.
+gates:
+  - {id: smoke_failed,          cap: 0,  label: "Smoke test failed: the site is down or the home page is broken"}
+  - {id: security_critical,     cap: 39, label: "Critical security finding"}
+  - {id: critical_flow_failed,  cap: 59, label: "A critical user flow fails"}
+  - {id: load_error_rate,       cap: 59, label: "Error rate above 5% at expected load"}
+  - {id: security_high,         cap: 74, label: "High security finding"}
+
+levels:
+  - {level: 5, min: 90, name: Excellent, meaning: "Release-ready, minor issues only"}
+  - {level: 4, min: 75, name: Good,      meaning: "Release-ready after small fixes"}
+  - {level: 3, min: 60, name: Fair,      meaning: "Works, but needs fixes before release"}
+  - {level: 2, min: 40, name: Poor,      meaning: "Serious defects"}
+  - {level: 1, min: 0,  name: Critical,  meaning: "Not fit for release"}
+
+# Measured values: 100 at "good", 0 at "poor", a straight line between.
+thresholds:
+  lcp_ms:          {good: 2500, poor: 4000, weight: 25, label: Largest Contentful Paint}
+  cls:             {good: 0.1,  poor: 0.25, weight: 25, label: Cumulative Layout Shift}
+  tbt_ms:          {good: 200,  poor: 600,  weight: 30, label: Total Blocking Time}
+  fcp_ms:          {good: 1800, poor: 3000, weight: 10, label: First Contentful Paint}
+  ttfb_ms:         {good: 800,  poor: 1800, label: Time to first byte}
+  error_rate_pct:  {good: 0.1,  poor: 5.0,  label: Error rate}
+
+# ------------------------------------------------------------------ crawl ---
+crawl:
+  max_pages: 30
+  max_depth: 3
+  requests_per_second: 5
+  timeout_seconds: 15
+  respect_robots: true
+  user_agent: "qabot/0.1 (QA audit bot)"
+  max_link_checks: 150        # internal links and resources verified beyond crawled pages
+  check_external: true
+  max_external: 40
+
+# ---------------------------------------------------------------- browser ---
+browser:
+  enabled: auto               # auto | true | false
+  executable: null            # path to Chrome/Chromium; null = let Playwright decide
+  extra_engines: [firefox, webkit]
+  page_timeout_seconds: 20
+  viewports:
+    phone:   {width: 390,  height: 844}
+    tablet:  {width: 768,  height: 1024}
+    desktop: {width: 1366, height: 768}
+
+performance:
+  sample_pages: 5
+  throttle: mobile            # mobile | none
+  mobile_throttle: {latency_ms: 150, download_kbps: 1600, upload_kbps: 750, cpu_slowdown: 4}
+  heavy_page_bytes: 3000000
+
+accessibility:
+  keyboard_sample_pages: 5
+  contrast_normal: 4.5
+  contrast_large: 3.0
+
+compatibility:
+  sample_pages: 5
+
+security:
+  # Only requested when the user passes --i-own-this-site.
+  probes:
+    - {path: "/.env",        rule: exposed-env,      severity: critical, signature: "^[A-Z0-9_]+\\s*=", title: "Environment file is publicly readable"}
+    - {path: "/.git/HEAD",   rule: exposed-git,      severity: high,     signature: "^ref: refs/",       title: "Git repository is publicly readable"}
+    - {path: "/phpinfo.php", rule: exposed-phpinfo,  severity: medium,   signature: "phpinfo\\(\\)",     title: "phpinfo() page is publicly readable"}
+    - {path: "/server-status", rule: exposed-server-status, severity: medium, signature: "Apache Server Status", title: "Apache server-status page is publicly readable"}
+  session_cookie_pattern: "(sess|sid|auth|token|jwt|login)"
+  local_targets_skip_transport: true   # no HTTPS/TLS findings for localhost and private addresses

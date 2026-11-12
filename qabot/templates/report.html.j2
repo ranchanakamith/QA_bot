@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QA report: {{ r.scanned_origin }}</title>
+<style>
+  :root {
+    --ink: #1b1f24; --muted: #5d6673; --line: #dfe3e8; --paper: #ffffff; --wash: #f5f6f8;
+    --good: #1a7f4b; --fair: #a86400; --bad: #b3261e; --accent: #2b4c7e;
+    --critical: #8c1d18; --high: #b3261e; --medium: #a86400; --low: #4d6480; --info: #6b7480;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--wash); color: var(--ink);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 17px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
+  h3 { font-size: 15px; margin: 0; }
+  p { margin: 0 0 10px; }
+  a { color: var(--accent); }
+  code, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .card { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; }
+  .hero { display: grid; grid-template-columns: 190px 1fr; gap: 28px; align-items: center; margin-top: 20px; }
+  .dial { text-align: center; }
+  .dial .num { font-size: 68px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+  .dial .of { color: var(--muted); font-size: 13px; }
+  .dial .lvl { display: inline-block; margin-top: 10px; padding: 3px 12px; border-radius: 3px;
+               color: #fff; font-weight: 600; font-size: 13px; }
+  .tone-good { color: var(--good); } .tone-fair { color: var(--fair); } .tone-bad { color: var(--bad); }
+  .bg-good { background: var(--good); } .bg-fair { background: var(--fair); } .bg-bad { background: var(--bad); }
+  .gate { border-left: 4px solid var(--bad); background: #fbeceb; padding: 8px 12px; margin: 10px 0 0; border-radius: 0 4px 4px 0; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+  .fact { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+  .fact b { display: block; font-size: 20px; }
+  .fact span { color: var(--muted); font-size: 12.5px; }
+  table { width: 100%; border-collapse: collapse; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+  .scroll { overflow-x: auto; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--wash); }
+  tr:last-child td { border-bottom: 0; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cat { margin-bottom: 10px; padding: 0; overflow: hidden; }
+  .cat > summary { display: grid; grid-template-columns: 1fr 70px 200px 56px; gap: 14px; align-items: center;
+                   padding: 12px 18px; cursor: pointer; list-style: none; }
+  .cat > summary::-webkit-details-marker { display: none; }
+  .cat .w { color: var(--muted); font-size: 12.5px; text-align: right; }
+  .bar { height: 8px; background: #e6e9ed; border-radius: 4px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 4px; }
+  .cat .s { font-weight: 700; font-size: 17px; text-align: right; font-variant-numeric: tabular-nums; }
+  .cat table { border: 0; border-top: 1px solid var(--line); border-radius: 0; table-layout: fixed; }
+  .cat th:nth-child(1) { width: 30%; } .cat th:nth-child(2) { width: 70px; } .cat th:nth-child(3) { width: 70px; }
+  .cat td { font-size: 13.5px; }
+  .skip { color: var(--muted); }
+  .delta { font-size: 12px; font-weight: 600; margin-left: 6px; }
+  .sev { display: inline-block; min-width: 72px; text-align: center; padding: 1px 8px; border-radius: 3px; color: #fff;
+         font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .sev-critical { background: var(--critical); } .sev-high { background: var(--high); }
+  .sev-medium { background: var(--medium); } .sev-low { background: var(--low); } .sev-info { background: var(--info); }
+  .finding { margin-bottom: 8px; padding: 0; }
+  .finding > summary { display: grid; grid-template-columns: 82px 62px 1fr auto; gap: 12px; align-items: center;
+                       padding: 10px 16px; cursor: pointer; list-style: none; }
+  .finding > summary::-webkit-details-marker { display: none; }
+  .finding > summary > span { min-width: 0; overflow-wrap: anywhere; }
+  .finding .id { color: var(--muted); }
+  .finding .where { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .finding .body { padding: 4px 16px 14px; border-top: 1px solid var(--line); }
+  .finding dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px 14px; margin: 12px 0 0; }
+  .finding dt { color: var(--muted); font-size: 12.5px; }
+  .finding dd { margin: 0; overflow-wrap: anywhere; }
+  .finding pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--wash); padding: 6px 8px; border-radius: 4px; }
+  .tag { font-size: 12px; font-weight: 600; color: var(--bad); }
+  .shots { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .shots figure { margin: 0; }
+  .shots img { display: block; border: 1px solid var(--line); border-radius: 4px; height: 300px; width: auto; max-width: 100%; }
+  .shots figcaption { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+  ul.plain { margin: 0; padding-left: 18px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12.5px; }
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; } .facts { grid-template-columns: repeat(2, 1fr); }
+    .cat > summary { grid-template-columns: 1fr 56px; } .cat .w, .cat .bar { display: none; }
+    .finding > summary { grid-template-columns: 82px 1fr; } .finding .id, .finding .where { display: none; }
+    .finding dl { grid-template-columns: 1fr; } main { padding: 20px 14px 48px; }
+    .cat th:nth-child(1) { width: 34%; } .cat th:nth-child(2), .cat td:nth-child(2) { display: none; }
+  }
+  @media print {
+    body { background: #fff; } main { padding: 0; max-width: none; }
+    details { break-inside: avoid; } h2 { break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+<main>
+{% set s = r.score %}
+{% macro tone(v) %}{% if v is none %}skip{% elif v >= 75 %}good{% elif v >= 60 %}fair{% else %}bad{% endif %}{% endmacro %}
+
+<h1>QA report: {{ r.scanned_origin }}</h1>
+<div class="meta">{{ r.started | replace("T", " ") | replace("+00:00", " UTC") }} · {{ r.access }} · profile “{{ r.profile }}” ·
+  scan took {{ r.duration_seconds }} s{% if r.browser %} · {{ r.browser }}{% endif %}</div>
+
+<section class="hero card">
+  <div class="dial">
+    <div class="num tone-{{ tone(s.score) }}">{{ s.score }}</div>
+    <div class="of">out of 100</div>
+    <div class="lvl bg-{{ tone(s.score) }}">Level {{ s.level }} · {{ s.level_name }}</div>
+  </div>
+  <div>
+    <p><b>{{ s.level_meaning }}.</b>
+    {% if not r.smoke.passed %}The scan stopped at the smoke test: {{ r.smoke.reason }}.
+    {% else %}The score covers {{ s.weight_tested }} of 100 weight points
+    ({{ counts.categories_tested }} of {{ s.categories | length }} categories). Counted check by check, {{ "%g" | format(s.depth_tested) }} of 100 points
+    were exercised; the rest needs access this scan did not have.{% endif %}</p>
+    {% if s.capped %}
+      {% for g in s.gates[:1] %}
+      <div class="gate"><b>Capped at {{ g.cap }}</b> (weighted average {{ s.raw_score }}): {{ g.label }}.</div>
+      {% endfor %}
+    {% endif %}
+    {% if r.baseline %}
+    <p class="meta" style="margin-top:10px">Previous run ({{ r.baseline.started[:10] }}): {{ r.baseline.score }} →
+      {{ s.score }} ({{ "%+d" | format(r.baseline.delta) }}). {{ r.baseline.fixed | length }} issue type{{ "" if r.baseline.fixed | length == 1 else "s" }} fixed,
+      {{ r.baseline.new | length }} new.</p>
+    {% endif %}
+    <p class="meta" style="margin-top:10px">An automated scan shows the defects it found. It cannot show that no others exist.</p>
+  </div>
+</section>
+
+<div class="facts">
+  <div class="fact"><b>{{ counts.critical + counts.high }}</b><span>critical and high findings</span></div>
+  <div class="fact"><b>{{ counts.medium }}</b><span>medium findings</span></div>
+  <div class="fact"><b>{{ counts.low + counts.info }}</b><span>low findings and hints</span></div>
+  <div class="fact"><b>{{ r.inventory.pages }}</b><span>pages crawled, {{ r.inventory.links_and_resources }} links and resources</span></div>
+</div>
+
+{% if r.smoke.passed %}
+<h2>Category scores</h2>
+{% for c in s.categories %}
+<details class="card cat" {{ "open" if c.tested and c.score < 75 }}>
+  <summary>
+    <h3>{{ c.name }}</h3>
+    <span class="w">weight {{ c.weight }}</span>
+    <span class="bar">{% if c.tested %}<i class="bg-{{ tone(c.score) }}" style="width: {{ c.score }}%"></i>{% endif %}</span>
+    <span class="s {{ 'tone-' ~ tone(c.score) if c.tested else 'skip' }}">{% if c.tested %}{{ c.score | round | int }}{% else %}–{% endif %}
+      {%- if c.delta is defined and c.delta is not none and c.delta != 0 %}<span class="delta tone-{{ 'good' if c.delta > 0 else 'bad' }}">{{ "%+.0f" | format(c.delta) }}</span>{% endif %}</span>
+  </summary>
+  <table>
+    <tr><th>Check</th><th class="n">Share</th><th class="n">Score</th><th>Result</th></tr>
+    {% for k in c.checks %}
+    <tr>
+      <td>{{ k.name }}</td><td class="n">{{ k.share }}%</td>
+      {% if k.tested %}<td class="n tone-{{ tone(k.score) }}"><b>{{ k.score | round | int }}</b></td><td>{{ k.summary }}</td>
+      {% else %}<td class="n skip">–</td><td class="skip">Not tested. {{ k.reason }}</td>{% endif %}
+    </tr>
+    {% endfor %}
+  </table>
+</details>
+{% endfor %}
+
+{% if fixes %}
+<h2>Fix first</h2>
+<table>
+  <tr><th>#</th><th>Finding</th><th>Severity</th><th class="n">Points back</th></tr>
+  {% for f in fixes[:12] %}
+  <tr>
+    <td class="mono">{{ f.id }}</td>
+    <td>{{ f.title }}{% if f.gate %} <span class="tag">{{ f.gate }}</span>{% endif %}<br><span class="meta">{{ f.fix }}</span></td>
+    <td><span class="sev sev-{{ f.severity }}">{{ f.severity }}</span></td>
+    <td class="n">{% if f.impact_points >= 0.05 %}+{{ "%.1f" | format(f.impact_points) }}{% else %}–{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="meta" style="margin-top:6px">“Points back” is what fixing the finding adds to the weighted average. A finding that caps the score has to be fixed before those points show.</p>
+{% endif %}
+
+<h2>Findings ({{ r.findings | length }})</h2>
+{% if not r.findings %}<p>No defects were found by the checks that ran.</p>{% endif %}
+{% for f in r.findings %}
+<details class="card finding">
+  <summary>
+    <span class="sev sev-{{ f.severity }}">{{ f.severity }}</span>
+    <span class="id mono">{{ f.id }}</span>
+    <span><b>{{ f.title }}</b>{% if f.gate %} <span class="tag">{{ f.gate }}</span>{% endif %}</span>
+    <span class="where">{{ names[f.category] }}{% if f.occurrences > 1 %} · {{ f.occurrences }}×{% endif %}</span>
+  </summary>
+  <div class="body">
+    <dl>
+      {% if f.description %}<dt>What it means</dt><dd>{{ f.description }}</dd>{% endif %}
+      {% if f.locations %}<dt>Where</dt><dd>{% for l in f.locations %}<span class="mono">{{ l }}</span><br>{% endfor %}
+        {% if f.occurrences > f.locations | length %}<span class="meta">and {{ f.occurrences - f.locations | length }} more</span>{% endif %}</dd>{% endif %}
+      {% if f.expected %}<dt>Expected</dt><dd>{{ f.expected }}</dd>{% endif %}
+      {% if f.actual %}<dt>Actual</dt><dd>{{ f.actual }}</dd>{% endif %}
+      {% if f.evidence %}<dt>Evidence</dt><dd><pre class="mono">{{ f.evidence }}</pre></dd>{% endif %}
+      {% if f.fix %}<dt>Fix</dt><dd>{{ f.fix }}</dd>{% endif %}
+      {% if f.reference %}<dt>Reference</dt><dd>{{ f.reference }}</dd>{% endif %}
+      <dt>Confidence</dt><dd>{{ f.confidence }}</dd>
+    </dl>
+  </div>
+</details>
+{% endfor %}
+
+{% if speed and speed.pages %}
+<h2>Page speed</h2>
+<div class="scroll"><table>
+  {% if speed.mode == "browser" %}
+  <tr><th>Page</th><th class="n">Score</th><th class="n">LCP</th><th class="n">CLS</th><th class="n">TBT</th><th class="n">FCP</th><th class="n">TTFB</th><th class="n">Size</th></tr>
+  {% for p in speed.pages %}
+  <tr>
+    <td class="mono">{{ p.url }}</td><td class="n tone-{{ tone(p.score) }}"><b>{{ p.score | round | int }}</b></td>
+    <td class="n">{{ "{:,.0f}".format(p.metrics.lcp_ms.value) }} ms</td><td class="n">{{ "%.2f" | format(p.metrics.cls.value) }}</td>
+    <td class="n">{{ "{:,.0f}".format(p.metrics.tbt_ms.value) }} ms</td><td class="n">{{ "{:,.0f}".format(p.metrics.fcp_ms.value) }} ms</td>
+    <td class="n">{{ "{:,}".format(p.ttfb_ms) }} ms</td><td class="n">{{ "{:,.0f}".format(p.transfer_bytes / 1024) }} KB</td>
+  </tr>
+  {% endfor %}
+  {% else %}
+  <tr><th>Page</th><th class="n">Score</th><th class="n">Server response</th><th class="n">HTML size</th></tr>
+  {% for p in speed.pages %}
+  <tr><td class="mono">{{ p.url }}</td><td class="n tone-{{ tone(p.score) }}"><b>{{ p.score | round | int }}</b></td>
+      <td class="n">{{ "{:,}".format(p.ttfb_ms) }} ms</td><td class="n">{{ "{:,.0f}".format(p.transfer_bytes / 1024) }} KB</td></tr>
+  {% endfor %}
+  {% endif %}
+</table></div>
+<p class="meta" style="margin-top:6px">Single lab run per page; values vary between runs. Load, stress, spike and soak results will appear here from Phase 3.</p>
+{% endif %}
+
+{% if r.screenshots %}
+<h2>Start page on each screen size</h2>
+<div class="shots">
+  {% for name in ["phone", "tablet", "desktop"] if name in r.screenshots %}
+  <figure><img alt="Start page at {{ name }} size" src="data:image/jpeg;base64,{{ r.screenshots[name] }}"><figcaption>{{ name | capitalize }}</figcaption></figure>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+
+<h2>Scope and coverage</h2>
+<div class="card">
+  <p><b>Tested:</b> {{ r.inventory.pages }} pages, {{ r.inventory.links_and_resources }} links and resources,
+     {{ r.inventory.forms }} form{{ "" if r.inventory.forms == 1 else "s" }} found ({{ r.inventory.forms_with_password }} with a password field; forms were not submitted).
+     {% if r.inventory.skipped_by_robots %}{{ r.inventory.skipped_by_robots }} URLs were skipped because robots.txt disallows them.{% endif %}</p>
+  <p><b>Coverage:</b> {{ s.weight_tested }} of 100 weight points have at least one check; counted check by check,
+     {{ "%g" | format(s.depth_tested) }} of 100 points were exercised. Untested checks are left out of the score and their weight is shared among the rest.</p>
+  {% if r.notes %}<p><b>Notes:</b></p><ul class="plain">{% for n in r.notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+</div>
+
+{% if r.not_tested %}
+<h2>Not tested</h2>
+<table>
+  <tr><th>Category</th><th>Check</th><th>Why</th></tr>
+  {% for n in r.not_tested %}<tr><td>{{ n.category }}</td><td>{{ n.check }}</td><td>{{ n.reason }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+
+<footer>Generated by qabot {{ r.version }}. Weights, thresholds and gates are configurable defaults, not an industry standard.</footer>
+</main>
+</body>
+</html>
